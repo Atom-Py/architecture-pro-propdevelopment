@@ -1,0 +1,81 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srunasnonroot
+  annotations:
+    description: >-
+      Требует runAsNonRoot true, запрещает UID 0 и при параметре
+      requireReadOnlyRootFilesystem требует readOnlyRootFilesystem true.
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRunAsNonRoot
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            requireReadOnlyRootFilesystem:
+              type: boolean
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srunasnonroot
+
+        violation[{"msg": msg}] {
+          c := input_containers[_]
+          not run_as_non_root(c)
+          msg := sprintf("контейнер %v должен запускаться с runAsNonRoot: true", [c.name])
+        }
+
+        violation[{"msg": msg}] {
+          c := input_containers[_]
+          run_as_user(c) == 0
+          msg := sprintf("контейнер %v запускается от root (runAsUser: 0)", [c.name])
+        }
+
+        violation[{"msg": msg}] {
+          input.parameters.requireReadOnlyRootFilesystem
+          c := input_containers[_]
+          not c.securityContext.readOnlyRootFilesystem == true
+          msg := sprintf("контейнер %v должен работать с readOnlyRootFilesystem: true", [c.name])
+        }
+
+        # значение контейнера важнее значения пода
+        run_as_non_root(c) {
+          c.securityContext.runAsNonRoot == true
+        }
+
+        run_as_non_root(c) {
+          not container_sets_non_root(c)
+          input.review.object.spec.securityContext.runAsNonRoot == true
+        }
+
+        container_sets_non_root(c) {
+          _ := c.securityContext.runAsNonRoot
+        }
+
+        run_as_user(c) = uid {
+          uid := c.securityContext.runAsUser
+        }
+
+        run_as_user(c) = uid {
+          not container_sets_user(c)
+          uid := input.review.object.spec.securityContext.runAsUser
+        }
+
+        container_sets_user(c) {
+          _ := c.securityContext.runAsUser
+        }
+
+        input_containers[c] {
+          c := input.review.object.spec.containers[_]
+        }
+
+        input_containers[c] {
+          c := input.review.object.spec.initContainers[_]
+        }
+
+        input_containers[c] {
+          c := input.review.object.spec.ephemeralContainers[_]
+        }
