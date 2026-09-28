@@ -1,0 +1,33 @@
+# Исправленный 01-privileged-pod.yaml: privileged отключён, остальные настройки
+# по уровню restricted. Образ nginx-unprivileged работает без root на порту 8080,
+# временные файлы пишет в /tmp, поэтому корневая файловая система только для чтения.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-privileged-fixed
+  namespace: audit-zone
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 101
+    runAsGroup: 101
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: nginx
+      image: nginxinc/nginx-unprivileged:1.29-alpine
+      ports:
+        - containerPort: 8080
+      securityContext:
+        privileged: false
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        capabilities:
+          drop: ["ALL"]
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+  volumes:
+    - name: tmp
+      emptyDir: {}
