@@ -1,0 +1,27 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Временные файлы редакторов
+*~
+*.swp
+*.bak
+$~*
+~$*
+
+# Результаты экспорта draw.io
+export/
+
+# Ключи, сертификаты и kubeconfig, которые создают скрипты
+*.key
+*.csr
+*.crt
+*.kubeconfig
+
+# Логи
+*.log

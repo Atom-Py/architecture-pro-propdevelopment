@@ -1,0 +1,35 @@
+# Исправленный 02-hostpath-pod.yaml: вместо каталога узла через hostPath
+# под получает собственный том emptyDir, файловая система узла недоступна.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-hostpath-fixed
+  namespace: audit-zone
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 101
+    runAsGroup: 101
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: nginx
+      image: nginxinc/nginx-unprivileged:1.29-alpine
+      ports:
+        - containerPort: 8080
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        capabilities:
+          drop: ["ALL"]
+      volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: tmp
+          mountPath: /tmp
+  volumes:
+    - name: data
+      emptyDir: {}
+    - name: tmp
+      emptyDir: {}

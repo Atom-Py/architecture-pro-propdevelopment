@@ -1,0 +1,35 @@
+apiVersion: audit.k8s.io/v1
+kind: Policy
+omitStages:
+  - RequestReceived
+rules:
+  # Чтение компонентами control plane и проверки здоровья не пишутся
+  - level: None
+    users: ["system:kube-scheduler", "system:kube-proxy", "system:apiserver",
+            "system:kube-controller-manager"]
+    verbs: ["get", "list", "watch"]
+  - level: None
+    nonResourceURLs: ["/healthz*", "/readyz*", "/livez*", "/version"]
+  # Секреты и configmap только на уровне метаданных, значения в журнал не попадают
+  - level: Metadata
+    resources:
+      - group: ""
+        resources: ["secrets", "configmaps"]
+  # Поды в audit-zone полностью: видно, какой манифест отклонён и почему
+  - level: RequestResponse
+    namespaces: ["audit-zone"]
+    verbs: ["create", "update", "patch", "delete"]
+    resources:
+      - group: ""
+        resources: ["pods"]
+  # Изменения политик Gatekeeper, меток PodSecurity на namespace и RBAC
+  - level: RequestResponse
+    verbs: ["create", "update", "patch", "delete"]
+    resources:
+      - group: "templates.gatekeeper.sh"
+      - group: "constraints.gatekeeper.sh"
+      - group: ""
+        resources: ["namespaces"]
+      - group: "rbac.authorization.k8s.io"
+        resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+  - level: Metadata
